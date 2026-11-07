@@ -21,6 +21,8 @@ Com Supabase CLI instalado e projeto vinculado:
 supabase login
 supabase link --project-ref SEU_PROJECT_REF
 supabase functions deploy create-checkout
+supabase functions deploy admin-books
+supabase functions deploy my-library
 supabase functions deploy mercadopago-webhook --no-verify-jwt
 ```
 A função de webhook precisa aceitar chamadas externas do Mercado Pago; a função de checkout exige JWT válido do cliente.
@@ -36,3 +38,15 @@ A função de webhook precisa aceitar chamadas externas do Mercado Pago; a funç
 - O pedido só é marcado como pago depois da confirmação da API do Mercado Pago e validação da assinatura do webhook.
 - Acesso aos PDFs ainda depende de criar bucket privado e uma função de autorização/leitura assinada. Não publique PDFs no diretório do GitHub Pages.
 - Antes de produção, realizar testes de ponta a ponta, política antifraude, revisão das políticas RLS e revisão jurídica/tributária.
+
+## 6. Painel administrativo
+1. Crie a conta de administrador pela página principal.
+2. No Supabase SQL Editor, localize o UUID do usuário em Authentication → Users.
+3. Promova somente a conta autorizada: `update public.profiles set role='admin' where id='UUID-DO-ADMIN';`.
+4. Faça login na loja e acesse `/admin.html`.
+5. O endpoint `admin-books` verifica JWT e a coluna `profiles.role` em cada operação. Não conceda edição direta dessa coluna a usuários.
+
+## 7. Biblioteca do cliente
+A página `/library.html` chama a função autenticada `my-library`. A função só lista itens de pedidos pagos pertencentes ao usuário autenticado. PDFs de compra podem receber URL assinada de curta duração (60 segundos) se o arquivo existir no bucket privado `books`.
+
+**Limitação atual:** aluguel já registra e verifica prazo no banco, mas o leitor temporário protegido ainda precisa ser desenvolvido. Não suba PDFs no repositório público e não considere um link de PDF como proteção contra cópia.
