@@ -10,7 +10,8 @@ const reply = (status: number, body: unknown) => new Response(JSON.stringify(bod
 const env = (name: string) => Deno.env.get(name) ?? "";
 function keys() {
   const publishable = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}").default ?? env("SUPABASE_ANON_KEY");
-  const secret = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}").default ?? env("SUPABASE_SERVICE_ROLE_KEY") ?? env("SUPABASE_SECRET_KEY");
+  const secretMap = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
+  const secret = secretMap.default || env("SUPABASE_SERVICE_ROLE_KEY") || env("SUPABASE_SECRET_KEY");
   if (!publishable || !secret || !env("SUPABASE_URL")) throw new Error("Supabase secrets not configured");
   return { publishable, secret };
 }
