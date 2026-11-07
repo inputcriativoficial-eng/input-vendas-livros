@@ -1,6 +1,6 @@
 // Configure apenas a URL e a chave anon/public do Supabase. Nunca coloque service_role ou Mercado Pago Access Token aqui.
-const SUPABASE_URL="";
-const SUPABASE_ANON_KEY=""; // chave publishable/anon do projeto
+const SUPABASE_URL="https://rgsyiusoieduzevbthwx.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_jB3mLzqbGKpNtii8UtWI5Q_lVk5uQJX"; // chave publishable/anon do projeto
 const sb=SUPABASE_URL&&SUPABASE_ANON_KEY?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
 const books=[
 {id:"tapajos",title:"O Segredo do Rio Tapajós",cat:"Histórico",price:29.9,rent:{7:9.9,15:14.9,30:19.9},desc:"Uma expedição pela Amazônia revela um mistério guardado há gerações.",tone:"#174b61"},
