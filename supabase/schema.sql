@@ -8,6 +8,8 @@ create index if not exists orders_user_id_idx on public.orders(user_id);
 alter table public.profiles enable row level security;alter table public.books enable row level security;alter table public.orders enable row level security;alter table public.order_items enable row level security;alter table public.cashback_ledger enable row level security;
 create policy "profile read own" on public.profiles for select to authenticated using(id=auth.uid());
 -- Profile role and cashback are server-managed; customers cannot update their profile row directly.\nrevoke update on public.profiles from authenticated;
+revoke insert, update, delete on public.profiles from anon, authenticated;
+grant select on public.profiles to authenticated;
 create policy "published books readable" on public.books for select to anon,authenticated using(published=true);
 create policy "customer reads own orders" on public.orders for select to authenticated using(user_id=auth.uid());
 create policy "customer reads own order items" on public.order_items for select to authenticated using(exists(select 1 from public.orders o where o.id=order_id and o.user_id=auth.uid()));
