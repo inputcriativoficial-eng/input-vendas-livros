@@ -1,45 +1,42 @@
 # Input Criativo — nova plataforma
 
-Nova base da livraria digital, criada na branch nova-plataforma, separada da versão antiga.
+Nova loja digital criada em branch independente: `nova-plataforma`.
 
-## Incluído
-- Loja responsiva com catálogo, busca e categorias.
-- Carrinho demonstrativo.
-- Compra definitiva e aluguel por 7, 15 e 30 dias.
-- Interface de cadastro/login preparada para Supabase Auth.
-- Sem credenciais privadas ou token de pagamento no frontend.
+## O que já está no repositório
+- Loja responsiva, catálogo, pesquisa e categorias.
+- Carrinho com compra definitiva e aluguel de 7, 15 e 30 dias.
+- Cadastro/login com Supabase Auth (após configurar URL e chave pública).
+- Checkout server-side com criação de preferência Mercado Pago.
+- Webhook com validação HMAC da assinatura e consulta do pagamento na API do provedor.
+- Esquema PostgreSQL com perfis, livros, pedidos, itens e cashback.
+- Painel administrativo protegido por papel `admin`.
+- Página de biblioteca do cliente, filtrada por pedidos pagos.
+- Bucket de armazenamento de livros configurado como privado.
 
 ## Arquitetura
-GitHub Pages hospeda somente arquivos estáticos; não executa Node.js nem guarda segredos. Arquitetura proposta:
-- GitHub Pages: frontend.
-- Supabase Auth: cadastro, login e recuperação de senha.
-- Supabase PostgreSQL: clientes, livros, pedidos e biblioteca.
-- Supabase Storage privado: PDFs.
-- Supabase Edge Functions: cobranças Mercado Pago e webhooks.
-- Mercado Pago: Pix e cartão.
+- GitHub Pages: frontend estático.
+- Supabase Auth: cadastro e autenticação.
+- Supabase PostgreSQL: catálogo, clientes, pedidos e permissões.
+- Supabase Edge Functions: checkout, webhook, painel administrativo e biblioteca.
+- Supabase Storage: PDFs privados.
+- Mercado Pago: Checkout Pro (Pix/cartão conforme habilitação da conta).
 
-Checkout está desativado nesta fundação. Nenhum pagamento é simulado ou considerado aprovado.
-
-## Publicar no GitHub Pages
+## Publicar o frontend
 1. Abra Settings → Pages.
-2. Em Build and deployment, selecione Deploy from a branch.
-3. Escolha branch nova-plataforma e pasta /(root).
+2. Selecione Deploy from a branch.
+3. Escolha `nova-plataforma` e `/(root)`.
 4. Salve e aguarde a publicação.
-5. Para usar www.inputcriativo.com.br, configure o domínio em Pages e os DNS conforme instruções do GitHub.
 
-## Configurar Supabase
-1. Crie um projeto Supabase.
-2. Execute supabase/schema.sql no SQL Editor.
-3. Configure Site URL e Redirect URLs em Authentication → URL Configuration.
-4. Insira Project URL e anon/public key no início de app.js.
-5. Nunca publique service_role, senha do banco ou Mercado Pago Access Token.
+## Instalar o backend
+Siga o guia completo em [BACKEND_SETUP.md](BACKEND_SETUP.md). Execute o schema e a migration, configure as secrets do Supabase, implante as Edge Functions e configure a notificação Webhook no Mercado Pago.
 
-## Regras de negócio
-- Compra definitiva: acesso permanente à biblioteca.
-- Aluguel: acesso de leitura por 7, 15 ou 30 dias, sem PDF para download.
-- Cashback: somente após validação das regras no servidor.
-- PDFs: bucket privado e links temporários após autorização.
-- Pagamento: pedido pendente até confirmação autenticada do provedor.
+No `app.js`, `admin.js` e `library.js`, configure somente a URL do projeto e a chave publishable/anon. Nunca coloque chave secreta, service role, senha do banco ou Access Token do Mercado Pago no frontend.
 
-## Ainda não implementado
-Checkout real, webhook do Mercado Pago, leitor protegido, biblioteca do cliente, painel administrativo completo, cashback automatizado e testes de segurança. Esta é uma base inicial, não uma loja pronta para receber pagamentos reais.
+## Antes de vender
+O código de integração foi adicionado, mas não está operacional até que o projeto Supabase e as credenciais do Mercado Pago sejam configurados e testados. Não há garantia de checkout ativo antes do teste real em ambiente sandbox.
+
+- Preços são consultados no banco pelo backend, não aceitos do navegador.
+- Pedidos só são marcados como pagos após webhook assinado e confirmação direta com o Mercado Pago.
+- PDFs de compra usam URL assinada de curta duração, quando o caminho do arquivo estiver cadastrado.
+- Aluguel tem controle de prazo no banco; o leitor temporário protegido ainda precisa ser concluído.
+- Cashback, recuperação de senha personalizada, painel de relatórios e testes completos ainda precisam de implementação.
