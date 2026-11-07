@@ -25,7 +25,7 @@ Nova loja digital criada em branch independente: `nova-plataforma`.
 1. Abra Settings → Pages.
 2. Selecione Deploy from a branch.
 3. Escolha `nova-plataforma` e `/(root)`.
-4. Salve e aguarde a publicação.
+4. Em Settings → Pages, escolha GitHub Actions como fonte de publicação.\n5. O workflow `.github/workflows/deploy-pages.yml` publica automaticamente a cada atualização da branch `nova-plataforma`.
 
 ## Instalar o backend
 Siga o guia completo em [BACKEND_SETUP.md](BACKEND_SETUP.md). Execute o schema e a migration, configure as secrets do Supabase, implante as Edge Functions e configure a notificação Webhook no Mercado Pago.
