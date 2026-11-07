@@ -29,3 +29,5 @@ on conflict(slug) do nothing;
 
 -- IMPORTANT: assign role='admin' manually to a trusted user UUID in the Supabase SQL editor.
 -- Never expose the service/secret key to the browser.
+-- Private object storage for digital book files. Never make this bucket public.
+insert into storage.buckets(id,name,public) values('books','books',false) on conflict(id) do update set public=false;
