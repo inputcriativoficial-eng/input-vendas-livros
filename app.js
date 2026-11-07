@@ -1,13 +1,13 @@
 // Configure apenas a URL e a chave anon/public do Supabase. Nunca coloque service_role ou Mercado Pago Access Token aqui.
 const SUPABASE_URL="";
-const SUPABASE_ANON_KEY="";
+const SUPABASE_ANON_KEY=""; // chave publishable/anon do projeto
 const sb=SUPABASE_URL&&SUPABASE_ANON_KEY?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
 const books=[
 {id:"tapajos",title:"O Segredo do Rio Tapajós",cat:"Histórico",price:29.9,rent:{7:9.9,15:14.9,30:19.9},desc:"Uma expedição pela Amazônia revela um mistério guardado há gerações.",tone:"#174b61"},
 {id:"jose-egito",title:"José do Egito",cat:"Histórico",price:24.9,rent:{7:8.9,15:12.9,30:17.9},desc:"Uma narrativa sobre fé, perdão e propósito.",tone:"#6b4a2d"},
 {id:"sinfonia",title:"A Sinfonia do Vazio",cat:"Ficção",price:26.9,rent:{7:9.9,15:13.9,30:18.9},desc:"Um compositor procura sentido no silêncio que tomou sua vida.",tone:"#30375d"},
 {id:"vida-roubada",title:"Uma Vida Roubada",cat:"Suspense",price:28.9,rent:{7:9.9,15:14.9,30:19.9},desc:"Uma identidade forjada e uma verdade que precisa ser descoberta.",tone:"#59313b"}];
-let cart=[],mode="login";const money=n=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+let cart=[],mode="login",currentSession=null;const money=n=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 function render(){let q=document.querySelector("#searchInput").value.toLowerCase(),cat=document.querySelector("#categoryFilter").value;document.querySelector("#bookGrid").innerHTML=books.filter(b=>(cat==="todos"||b.cat===cat)&&b.title.toLowerCase().includes(q)).map(b=>'<article class="card"><div class="cover" style="--tone:'+b.tone+'"><small>INPUT CRIATIVO</small><strong>'+b.title.toUpperCase()+'</strong><small>'+b.cat.toUpperCase()+' · EBOOK</small></div><h3>'+b.title+'</h3><p>'+b.desc+'</p><div class="price">Compra definitiva · '+money(b.price)+'</div><div class="actions"><button class="btn primary" data-buy="'+b.id+'">Comprar</button><button class="btn outline" data-rent="'+b.id+'">Alugar</button></div></article>').join("")||"<p>Nenhum livro encontrado.</p>";}
 function drawCart(){document.querySelector("#cartCount").textContent=cart.length;document.querySelector("#cartItems").innerHTML=cart.map((x,i)=>{let b=books.find(z=>z.id===x.id);return '<div class="row"><div><b>'+b.title+'</b><small>'+(x.days?"Aluguel · "+x.days+" dias":"Compra definitiva")+'</small></div><div>'+money(x.price)+'<br><button class="textlink" data-remove="'+i+'">Remover</button></div></div>'}).join("");document.querySelector("#cartTotal").textContent=money(cart.reduce((s,x)=>s+x.price,0));}
 document.querySelector("#bookGrid").addEventListener("click",e=>{let buy=e.target.closest("[data-buy]"),rent=e.target.closest("[data-rent]");if(buy){let b=books.find(x=>x.id===buy.dataset.buy);cart.push({id:b.id,price:b.price,days:0});}if(rent){let b=books.find(x=>x.id===rent.dataset.rent),d=Number(prompt("Prazo do aluguel: 7, 15 ou 30 dias","7"));if([7,15,30].includes(d))cart.push({id:b.id,price:b.rent[d],days:d});}drawCart();if(buy||rent)document.querySelector("#cartBackdrop").classList.remove("hidden");});
@@ -16,5 +16,18 @@ document.querySelector("#searchInput").addEventListener("input",render);document
 function auth(m){mode=m;document.querySelector("#authTitle").textContent=m==="login"?"Acesse sua conta":"Crie sua conta";document.querySelector("#authHint").textContent=m==="login"?"Entre para acessar sua biblioteca.":"Cadastre-se para acompanhar suas compras e leituras.";document.querySelector("#authSubmit").textContent=m==="login"?"Entrar":"Criar conta";document.querySelector("#authSwitch").textContent=m==="login"?"Criar uma conta":"Já tenho uma conta";document.querySelector("#authMessage").textContent=sb?"":"Configure o Supabase no app.js para habilitar contas.";document.querySelector("#authBackdrop").classList.remove("hidden");}
 document.querySelector("#accountBtn").onclick=()=>auth("login");document.querySelector("#authSwitch").onclick=()=>auth(mode==="login"?"signup":"login");document.querySelector("#closeAuth").onclick=()=>document.querySelector("#authBackdrop").classList.add("hidden");document.querySelector("#cartBtn").onclick=()=>document.querySelector("#cartBackdrop").classList.remove("hidden");document.querySelector("#closeCart").onclick=()=>document.querySelector("#cartBackdrop").classList.add("hidden");
 document.querySelector("#authSubmit").onclick=async()=>{let email=document.querySelector("#authEmail").value.trim(),password=document.querySelector("#authPassword").value,msg=document.querySelector("#authMessage");if(!sb){msg.textContent="Autenticação indisponível até configurar Supabase.";return;}if(!email||password.length<8){msg.textContent="Informe e-mail e senha com pelo menos 8 caracteres.";return;}let r=mode==="signup"?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});msg.textContent=r.error?r.error.message:(mode==="signup"?"Cadastro iniciado. Verifique seu e-mail.":"Login realizado.");};
-document.querySelector("#checkout").onclick=()=>alert("Checkout desativado até configurar backend seguro, cobrança e webhook. Nenhum pagamento foi criado.");
-document.querySelector("#year").textContent=new Date().getFullYear();render();drawCart();if(sb)sb.auth.onAuthStateChange((_e,s)=>{document.querySelector("#accountBtn").textContent=s?.user?.email?.split("@")[0]||"Entrar";});
+document.querySelector("#checkout").onclick=async()=>{
+ if(!sb){alert("Configure o Supabase antes de ativar o checkout.");return;}
+ if(!cart.length){alert("Seu carrinho está vazio.");return;}
+ const {data:{session}}=await sb.auth.getSession();
+ if(!session){document.querySelector("#cartBackdrop").classList.add("hidden");auth("login");document.querySelector("#authMessage").textContent="Entre na sua conta para continuar a compra.";return;}
+ const button=document.querySelector("#checkout");button.disabled=true;button.textContent="Conectando ao pagamento...";
+ try{
+  const payload={items:cart.map(x=>({slug:x.id,access_type:x.days?"rental":"purchase",rental_days:x.days||null}))};
+  const {data,error}=await sb.functions.invoke("create-checkout",{body:payload});
+  if(error)throw error;
+  if(!data?.checkout_url)throw new Error(data?.error||"O checkout não retornou um endereço de pagamento.");
+  window.location.assign(data.checkout_url);
+ }catch(error){alert(error.message||"Não foi possível iniciar o pagamento.");button.disabled=false;button.textContent="Continuar para pagamento";}
+};
+document.querySelector("#year").textContent=new Date().getFullYear();render();drawCart();if(sb)sb.auth.onAuthStateChange((_e,s)=>{currentSession=s;document.querySelector("#accountBtn").textContent=s?.user?.email?.split("@")[0]||"Entrar";});
