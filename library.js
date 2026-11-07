@@ -1,5 +1,5 @@
-const SUPABASE_URL="";
-const SUPABASE_ANON_KEY="";
+const SUPABASE_URL="https://rgsyiusoieduzevbthwx.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_jB3mLzqbGKpNtii8UtWI5Q_lVk5uQJX";
 const sb=SUPABASE_URL&&SUPABASE_ANON_KEY?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
 const statusEl=document.getElementById("status"),grid=document.getElementById("libraryGrid");
 async function load(){if(!sb){statusEl.textContent="Configure Supabase em library.js.";return;}const {data:{session}}=await sb.auth.getSession();if(!session){statusEl.textContent="Entre na sua conta pela loja para abrir sua biblioteca.";return;}const {data,error}=await sb.functions.invoke("my-library");if(error){statusEl.textContent=error.message;return;}const items=data?.library||[];statusEl.textContent=items.length?items.length+" item(ns) encontrado(s).":"Sua biblioteca ainda está vazia.";grid.innerHTML=items.map(x=>'<article class="card"><div class="cover"><small>INPUT CRIATIVO</small><strong>'+x.title+'</strong><small>'+x.access_type.toUpperCase()+'</small></div><h3>'+x.title+'</h3><p>'+(x.access_type==="purchase"?"Compra permanente":("Aluguel por "+x.rental_days+" dias · "+(x.active?"Acesso ativo":"Prazo encerrado")))+'</p>'+(x.download_url?'<a class="btn primary" target="_blank" rel="noopener" href="'+x.download_url+'">Abrir PDF</a>':(x.active?'<p class="note">Leitura temporária: o leitor protegido será ativado após a configuração do armazenamento.</p>':'<p class="note">Este acesso expirou.</p>'))+'</article>').join("");}
