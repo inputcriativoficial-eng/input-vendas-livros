@@ -6,6 +6,8 @@ alter table public.orders add column if not exists updated_at timestamptz not nu
 -- A customer must never be able to promote their own account or edit cashback.
 drop policy if exists "profile update own" on public.profiles;
 revoke update on public.profiles from authenticated;
+revoke insert, update, delete on public.profiles from anon, authenticated;
+grant select on public.profiles to authenticated;
 grant select on public.profiles to authenticated;
 
 -- Keep payment and entitlement writes server-side only.
