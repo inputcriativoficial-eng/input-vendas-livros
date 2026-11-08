@@ -66,7 +66,9 @@ document.querySelector("#checkout").onclick=async()=>{
  const button=document.querySelector("#checkout");button.disabled=true;button.textContent="Conectando ao pagamento...";
  try{
   const payload={items:cart.map(x=>({slug:x.id,access_type:x.days?"rental":"purchase",rental_days:x.days||null}))};
-  const {data,error}=await sb.functions.invoke("create-checkout",{body:payload});
+  const checkoutRequest=sb.functions.invoke("create-checkout",{body:payload});
+  const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error("O servidor de pagamento demorou mais de 25 segundos para responder. Nenhuma confirmação de cobrança foi recebida. Tente novamente em instantes; se o pedido aparecer no Mercado Pago, não repita o pagamento.")),25000));
+  const {data,error}=await Promise.race([checkoutRequest,timeout]);
   if(error)throw error;
   if(!data?.checkout_url)throw new Error(data?.error||"O checkout não retornou um endereço de pagamento.");
   window.location.assign(data.checkout_url);
