@@ -9,21 +9,32 @@ async function loadCatalog(){
  const grid=document.querySelector("#bookGrid");
  if(catalogLoading)return;
  catalogLoading=true;
- if(!sb){grid.innerHTML="<p>Não foi possível conectar ao catálogo. Tente novamente mais tarde.</p>";catalogLoading=false;return;}
- let lastError=null,data=null;
- for(let attempt=1;attempt<=3;attempt++){
-  const result=await sb.from("books").select("id,slug,title,description,category,cover_url,purchase_price,rent_7_price,rent_15_price,rent_30_price,published").eq("published",true).order("title");
-  if(!result.error){data=result.data||[];lastError=null;break;}
-  lastError=result.error;
-  console.error("Tentativa "+attempt+" de carregar catálogo:",lastError);
-  if(attempt<3)await new Promise(resolve=>setTimeout(resolve,1000*attempt));
- }
- if(lastError){
-  if(!catalogLoaded)grid.innerHTML="<p>Não foi possível carregar o catálogo agora. Atualize a página em instantes.</p>";
+ if(!sb){
+  if(!catalogLoaded)grid.innerHTML="<p>Não foi possível conectar ao catálogo. Tente novamente mais tarde.</p>";
   catalogLoading=false;return;
  }
- books=data.map(b=>({id:b.slug,title:b.title,cat:b.category||"Outros",price:Number(b.purchase_price||0),rent:{7:Number(b.rent_7_price||0),15:Number(b.rent_15_price||0),30:Number(b.rent_30_price||0)},desc:b.description||"Livro digital da Input Criativo.",cover:b.cover_url||"",tone:"#174b61"}));
- catalogLoaded=true;
+ let data=null,lastError=null;
+ // Para este catálogo, uma resposta vazia é tratada como falha transitória:
+ // o banco foi confirmado com 21 livros publicados.
+ for(let attempt=1;attempt<=4;attempt++){
+  try{
+   const result=await sb.from("books")
+    .select("id,slug,title,description,category,cover_url,purchase_price,rent_7_price,rent_15_price,rent_30_price,published")
+    .eq("published",true).order("title");
+   if(result.error){lastError=result.error;console.error("Catálogo - tentativa "+attempt+":",lastError);}
+   else if(Array.isArray(result.data)&&result.data.length>0){data=result.data;lastError=null;break;}
+   else{lastError=new Error("O Supabase retornou catálogo vazio, embora existam livros publicados.");console.warn(lastError.message);}
+  }catch(err){lastError=err;console.error("Falha de conexão com o catálogo:",err);}
+  if(attempt<4)await new Promise(resolve=>setTimeout(resolve,800*attempt));
+ }
+ if(!data||data.length===0){
+  // Nunca substitui um catálogo já carregado por uma resposta vazia.
+  if(!catalogLoaded)grid.innerHTML="<p>Estamos conectando à biblioteca. Atualize a página em instantes.</p>";
+  catalogLoading=false;return;
+ }
+ const nextBooks=data.map(b=>({id:b.slug,title:b.title,cat:b.category||"Outros",price:Number(b.purchase_price||0),rent:{7:Number(b.rent_7_price||0),15:Number(b.rent_15_price||0),30:Number(b.rent_30_price||0)},desc:b.description||"Livro digital da Input Criativo.",cover:b.cover_url||"",tone:"#174b61"}));
+ if(nextBooks.length>0)books=nextBooks;
+ catalogLoaded=books.length>0;
  const filter=document.querySelector("#categoryFilter"),selected=filter.value;
  const cats=[...new Set(books.map(b=>b.cat))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
  filter.innerHTML='<option value="todos">Todas as categorias</option>'+cats.map(cat=>'<option value="'+escapeHtml(cat)+'">'+escapeHtml(cat)+'</option>').join("");
