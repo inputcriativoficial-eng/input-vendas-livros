@@ -2,13 +2,30 @@
 const SUPABASE_URL="https://rgsyiusoieduzevbthwx.supabase.co";
 const SUPABASE_ANON_KEY="sb_publishable_jB3mLzqbGKpNtii8UtWI5Q_lVk5uQJX"; // chave publishable/anon do projeto
 const sb=SUPABASE_URL&&SUPABASE_ANON_KEY?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
-const books=[
-{id:"tapajos",title:"O Segredo do Rio Tapajós",cat:"Histórico",price:29.9,rent:{7:9.9,15:14.9,30:19.9},desc:"Uma expedição pela Amazônia revela um mistério guardado há gerações.",tone:"#174b61"},
-{id:"jose-egito",title:"José do Egito",cat:"Histórico",price:24.9,rent:{7:8.9,15:12.9,30:17.9},desc:"Uma narrativa sobre fé, perdão e propósito.",tone:"#6b4a2d"},
-{id:"sinfonia",title:"A Sinfonia do Vazio",cat:"Ficção",price:26.9,rent:{7:9.9,15:13.9,30:18.9},desc:"Um compositor procura sentido no silêncio que tomou sua vida.",tone:"#30375d"},
-{id:"vida-roubada",title:"Uma Vida Roubada",cat:"Suspense",price:28.9,rent:{7:9.9,15:14.9,30:19.9},desc:"Uma identidade forjada e uma verdade que precisa ser descoberta.",tone:"#59313b"}];
+let books=[];
 let cart=[],mode="login",currentSession=null;const money=n=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-function render(){let q=document.querySelector("#searchInput").value.toLowerCase(),cat=document.querySelector("#categoryFilter").value;document.querySelector("#bookGrid").innerHTML=books.filter(b=>(cat==="todos"||b.cat===cat)&&b.title.toLowerCase().includes(q)).map(b=>'<article class="card"><div class="cover" style="--tone:'+b.tone+'"><small>INPUT CRIATIVO</small><strong>'+b.title.toUpperCase()+'</strong><small>'+b.cat.toUpperCase()+' · EBOOK</small></div><h3>'+b.title+'</h3><p>'+b.desc+'</p><div class="price">Compra definitiva · '+money(b.price)+'</div><div class="actions"><button class="btn primary" data-buy="'+b.id+'">Comprar</button><button class="btn outline" data-rent="'+b.id+'">Alugar</button></div></article>').join("")||"<p>Nenhum livro encontrado.</p>";}
+function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
+async function loadCatalog(){
+ const grid=document.querySelector("#bookGrid");
+ grid.innerHTML="<p>Carregando livros...</p>";
+ if(!sb){grid.innerHTML="<p>Não foi possível conectar ao catálogo. Tente novamente mais tarde.</p>";return;}
+ const {data,error}=await sb.from("books").select("id,slug,title,description,category,cover_url,purchase_price,rent_7_price,rent_15_price,rent_30_price,published").eq("published",true).order("title");
+ if(error){console.error("Erro ao carregar catálogo:",error);grid.innerHTML="<p>Não foi possível carregar os livros. Verifique a conexão com o catálogo.</p>";return;}
+ books=(data||[]).map(b=>({id:b.slug,title:b.title,cat:b.category||"Outros",price:Number(b.purchase_price||0),rent:{7:Number(b.rent_7_price||0),15:Number(b.rent_15_price||0),30:Number(b.rent_30_price||0)},desc:b.description||"Livro digital da Input Criativo.",cover:b.cover_url||"",tone:"#174b61"}));
+ const filter=document.querySelector("#categoryFilter"),selected=filter.value;
+ const cats=[...new Set(books.map(b=>b.cat))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+ filter.innerHTML='<option value="todos">Todas as categorias</option>'+cats.map(cat=>'<option value="'+escapeHtml(cat)+'">'+escapeHtml(cat)+'</option>').join("");
+ if(cats.includes(selected))filter.value=selected;
+ render();
+}
+function render(){
+ const q=document.querySelector("#searchInput").value.toLowerCase(),cat=document.querySelector("#categoryFilter").value;
+ document.querySelector("#bookGrid").innerHTML=books.filter(b=>(cat==="todos"||b.cat===cat)&&b.title.toLowerCase().includes(q)).map(b=>{
+  const coverUrl=b.cover?SUPABASE_URL+"/storage/v1/object/public/covers/"+encodeURIComponent(b.cover):"";
+  const cover=coverUrl?'<img src="'+escapeHtml(coverUrl)+'" alt="Capa de '+escapeHtml(b.title)+'" loading="lazy">':'<div class="cover-placeholder"><small>INPUT CRIATIVO</small><strong>'+escapeHtml(b.title.toUpperCase())+'</strong><small>'+escapeHtml(b.cat.toUpperCase())+' · EBOOK</small></div>';
+  return '<article class="card"><div class="cover" style="--tone:'+b.tone+'">'+cover+'</div><h3>'+escapeHtml(b.title)+'</h3><p>'+escapeHtml(b.desc)+'</p><div class="price">Compra definitiva · '+money(b.price)+'</div><div class="actions"><button class="btn primary" data-buy="'+escapeHtml(b.id)+'">Comprar</button><button class="btn outline" data-rent="'+escapeHtml(b.id)+'">Alugar</button></div></article>';
+ }).join("")||"<p>Nenhum livro encontrado.</p>";
+}
 function drawCart(){document.querySelector("#cartCount").textContent=cart.length;document.querySelector("#cartItems").innerHTML=cart.map((x,i)=>{let b=books.find(z=>z.id===x.id);return '<div class="row"><div><b>'+b.title+'</b><small>'+(x.days?"Aluguel · "+x.days+" dias":"Compra definitiva")+'</small></div><div>'+money(x.price)+'<br><button class="textlink" data-remove="'+i+'">Remover</button></div></div>'}).join("");document.querySelector("#cartTotal").textContent=money(cart.reduce((s,x)=>s+x.price,0));}
 document.querySelector("#bookGrid").addEventListener("click",e=>{let buy=e.target.closest("[data-buy]"),rent=e.target.closest("[data-rent]");if(buy){let b=books.find(x=>x.id===buy.dataset.buy);cart.push({id:b.id,price:b.price,days:0});}if(rent){let b=books.find(x=>x.id===rent.dataset.rent),d=Number(prompt("Prazo do aluguel: 7, 15 ou 30 dias","7"));if([7,15,30].includes(d))cart.push({id:b.id,price:b.rent[d],days:d});}drawCart();if(buy||rent)document.querySelector("#cartBackdrop").classList.remove("hidden");});
 document.querySelector("#cartItems").addEventListener("click",e=>{let r=e.target.closest("[data-remove]");if(r){cart.splice(Number(r.dataset.remove),1);drawCart();}});
@@ -30,4 +47,4 @@ document.querySelector("#checkout").onclick=async()=>{
   window.location.assign(data.checkout_url);
  }catch(error){alert(error.message||"Não foi possível iniciar o pagamento.");button.disabled=false;button.textContent="Continuar para pagamento";}
 };
-document.querySelector("#year").textContent=new Date().getFullYear();render();drawCart();if(sb)sb.auth.onAuthStateChange((_e,s)=>{currentSession=s;document.querySelector("#accountBtn").textContent=s?.user?.email?.split("@")[0]||"Entrar";});
+document.querySelector("#year").textContent=new Date().getFullYear();loadCatalog();drawCart();if(sb)sb.auth.onAuthStateChange((_e,s)=>{currentSession=s;document.querySelector("#accountBtn").textContent=s?.user?.email?.split("@")[0]||"Entrar";});
