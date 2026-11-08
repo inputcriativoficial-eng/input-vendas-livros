@@ -7,7 +7,8 @@ create table if not exists public.cashback_ledger(id uuid primary key default ge
 create index if not exists orders_user_id_idx on public.orders(user_id);
 alter table public.profiles enable row level security;alter table public.books enable row level security;alter table public.orders enable row level security;alter table public.order_items enable row level security;alter table public.cashback_ledger enable row level security;
 create policy "profile read own" on public.profiles for select to authenticated using(id=auth.uid());
--- Profile role and cashback are server-managed; customers cannot update their profile row directly.\nrevoke update on public.profiles from authenticated;
+-- Profile role and cashback are server-managed; customers cannot update their profile row directly.
+revoke update on public.profiles from authenticated;
 revoke insert, update, delete on public.profiles from anon, authenticated;
 grant select on public.profiles to authenticated;
 create policy "published books readable" on public.books for select to anon,authenticated using(published=true);
