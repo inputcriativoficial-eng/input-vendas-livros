@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const headers={"Access-Control-Allow-Origin":Deno.env.get("FRONTEND_URL")??"*","Access-Control-Allow-Headers":"authorization, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
+const headers={"Access-Control-Allow-Origin":Deno.env.get("FRONTEND_URL")??"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
 const out=(s:number,b:unknown)=>new Response(JSON.stringify(b),{status:s,headers});
 Deno.serve(async(req)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers});
